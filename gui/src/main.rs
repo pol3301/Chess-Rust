@@ -1,14 +1,6 @@
 mod app;
-mod bitboard;
-mod board;
-mod fen;
-mod move_generator;
-mod moves;
-mod piece;
-mod squares;
 
 use crate::app::ChessApp;
-// use crate::fen::load_fen;
 
 fn main() -> eframe::Result {
     let viewport = egui::viewport::ViewportBuilder::default()

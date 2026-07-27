@@ -52,12 +52,22 @@ pub fn load_fen(fen: &str) -> Result<Board, FenError> {
 }
 
 fn handle_half_move_clock(board: &mut Board, fen_part: &str) -> Result<(), FenError> {
-    //TODO:
+    board.set_half_move_counter(
+        fen_part
+            .parse::<u16>()
+            .map_err(|_| FenError::InvalidHalfMoveClock)?,
+    );
+
     Ok(())
 }
 
 fn handle_full_move_clock(board: &mut Board, fen_part: &str) -> Result<(), FenError> {
-    //TODO:
+    board.set_full_move_counter(
+        fen_part
+            .parse::<u16>()
+            .map_err(|_| FenError::InvalidHalfMoveClock)?,
+    );
+
     Ok(())
 }
 
@@ -75,7 +85,7 @@ fn handle_en_passant(board: &mut Board, fen_part: &str) -> Result<(), FenError> 
     let file_char = bytes[0];
     let rank_char = bytes[1];
 
-    if !(b'a'..=b'h').contains(&file_char) || (b'1'..=b'8').contains(&rank_char) {
+    if !(b'a'..=b'h').contains(&file_char) || !(b'1'..=b'8').contains(&rank_char) {
         return Err(FenError::InvalidEnPassant);
     }
 

@@ -50,6 +50,9 @@ pub struct Board {
     mailbox: [Piece; 64],
 
     undo_list: UndoList,
+
+    half_move_counter: u16,
+    full_move_counter: u16,
 }
 
 impl Default for Board {
@@ -72,6 +75,9 @@ impl Board {
             castling_rights: CastlingRights::empty(),
 
             undo_list: UndoList::default(),
+
+            half_move_counter: 0,
+            full_move_counter: 0,
         }
     }
 
@@ -150,6 +156,14 @@ impl Board {
         self.get_bb_by_color(PieceColor::White) | self.get_bb_by_color(PieceColor::Black)
     }
 
+    pub fn set_half_move_counter(&mut self, new_count: u16) {
+        self.half_move_counter = new_count;
+    }
+
+    pub fn set_full_move_counter(&mut self, new_count: u16) {
+        self.full_move_counter = new_count;
+    }
+
     pub fn do_move(&mut self, move_to_make: Move) {
         let mut captured_piece = make_piece(PieceType::NoPiece, PieceColor::White);
         let moving_piece = self.piece_at(move_to_make.from_square());
@@ -160,7 +174,15 @@ impl Board {
             taken_piece: captured_piece,
             castling_rights: self.get_rights(),
             en_passant_bb: self.en_passant_bb,
+            half_move_counter: self.half_move_counter,
+            full_move_counter: self.full_move_counter,
         };
+
+        self.half_move_counter += 1;
+
+        if moving_color == PieceColor::Black {
+            self.full_move_counter += 1;
+        }
 
         let piece = if move_to_make.is_promotion() {
             make_piece(move_to_make.promotion_type(), moving_color)
@@ -223,6 +245,9 @@ impl Board {
         let Some(undo_move) = self.undo_list.pop() else {
             return;
         };
+
+        self.half_move_counter = undo_move.half_move_counter;
+        self.full_move_counter = undo_move.full_move_counter;
 
         let moving_color = get_color(self.piece_at(undo_move.mv.to_square()));
 

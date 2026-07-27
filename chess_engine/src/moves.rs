@@ -1,5 +1,3 @@
-use egui::Key::P;
-
 use crate::{
     bitboard::Bitboard,
     board::CastlingRights,
@@ -47,12 +45,8 @@ impl Move {
     pub const FLAG_PROMOTE_QUEEN: u16 = 0b1011;
 
     pub const FLAG_PROMOTE_KNIGHT_CAPTURE: u16 = 0b1100;
-
-    #[allow(dead_code)]
     pub const FLAG_PROMOTE_BISHOP_CAPTURE: u16 = 0b1101;
-    #[allow(dead_code)]
     pub const FLAG_PROMOTE_ROOK_CAPTURE: u16 = 0b1110;
-    #[allow(dead_code)]
     pub const FLAG_PROMOTE_QUEEN_CAPTURE: u16 = 0b1111;
 
     #[inline(always)]
@@ -175,6 +169,8 @@ pub struct UndoMove {
     pub taken_piece: Piece,
     pub castling_rights: CastlingRights,
     pub en_passant_bb: Bitboard,
+    pub half_move_counter: u16,
+    pub full_move_counter: u16,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

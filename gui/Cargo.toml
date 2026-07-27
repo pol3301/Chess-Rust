@@ -1,0 +1,12 @@
+[package]
+name = "gui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+chess_engine = {path = "../chess_engine"}
+
+eframe = "0.35.0"
+egui = "0.35.0"
+egui_extras = {version = "0.35.0", features = ["image"]}

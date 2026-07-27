@@ -1,4 +1,3 @@
-#![allow(long_running_const_eval)]
 use crate::{
     bitboard::{A_FILE, Bitboard, BitboardExt, H_FILE, RANK_2, RANK_3, RANK_6, RANK_7},
     board::{Board, CastlingRights},
@@ -226,55 +225,59 @@ const fn generate_all_blockers(index: u8, piece_type: PieceType) -> ([Bitboard; 
     generate_permutations(mask)
 }
 
-static ROOK_ATTACKS: [Bitboard; 102400] = {
-    let mut array = [0; 102400];
+include!(concat!(env!("OUT_DIR"), "/rooks_attack_table.rs"));
 
-    let mut i = 0;
-    while i < 64 {
-        let (blockers, blockers_size) = generate_all_blockers(i, PieceType::Rook);
+// static ROOK_ATTACKS: [Bitboard; 102400] = {
+//     let mut array = [0; 102400];
+//
+//     let mut i = 0;
+//     while i < 64 {
+//         let (blockers, blockers_size) = generate_all_blockers(i, PieceType::Rook);
+//
+//         let mut j = 0;
+//
+//         while j < blockers_size {
+//             let magic_info = &ROOK_MAGIC_INFO[i as usize];
+//             let array_index = ((blockers[j].wrapping_mul(magic_info.magic) >> magic_info.shift)
+//                 + magic_info.offset) as usize;
+//
+//             array[array_index] = generate_sliding_attacks(i, blockers[j], PieceType::Rook);
+//
+//             j += 1;
+//         }
+//
+//         i += 1;
+//     }
+//
+//     array
+// };
 
-        let mut j = 0;
+include!(concat!(env!("OUT_DIR"), "/bishops_attack_table.rs"));
 
-        while j < blockers_size {
-            let magic_info = &ROOK_MAGIC_INFO[i as usize];
-            let array_index = ((blockers[j].wrapping_mul(magic_info.magic) >> magic_info.shift)
-                + magic_info.offset) as usize;
-
-            array[array_index] = generate_sliding_attacks(i, blockers[j], PieceType::Rook);
-
-            j += 1;
-        }
-
-        i += 1;
-    }
-
-    array
-};
-
-static BISHOP_ATTACKS: [Bitboard; 5248] = {
-    let mut array = [0; 5248];
-
-    let mut i = 0;
-    while i < 64 {
-        let (blockers, blockers_size) = generate_all_blockers(i, PieceType::Bishop);
-
-        let mut j = 0;
-
-        while j < blockers_size {
-            let magic_info = &BISHOP_MAGIC_INFO[i as usize];
-            let array_index = ((blockers[j].wrapping_mul(magic_info.magic) >> magic_info.shift)
-                + magic_info.offset) as usize;
-
-            array[array_index] = generate_sliding_attacks(i, blockers[j], PieceType::Bishop);
-
-            j += 1;
-        }
-
-        i += 1;
-    }
-
-    array
-};
+// static BISHOP_ATTACKS: [Bitboard; 5248] = {
+//     let mut array = [0; 5248];
+//
+//     let mut i = 0;
+//     while i < 64 {
+//         let (blockers, blockers_size) = generate_all_blockers(i, PieceType::Bishop);
+//
+//         let mut j = 0;
+//
+//         while j < blockers_size {
+//             let magic_info = &BISHOP_MAGIC_INFO[i as usize];
+//             let array_index = ((blockers[j].wrapping_mul(magic_info.magic) >> magic_info.shift)
+//                 + magic_info.offset) as usize;
+//
+//             array[array_index] = generate_sliding_attacks(i, blockers[j], PieceType::Bishop);
+//
+//             j += 1;
+//         }
+//
+//         i += 1;
+//     }
+//
+//     array
+// };
 
 static KNIGHT_ATTACKS: [Bitboard; 64] = {
     let mut array = [0; 64];
@@ -390,7 +393,7 @@ pub fn gen_pawn_moves<const TACTICALS: bool, const QUIETS: bool>(
                 let to = b.pop_lsb();
                 let from = (to as i32 + $offset) as u8;
 
-                for i in 0..4 {
+                for i in (0..4).rev() {
                     let mv = Move::new(from, to, $base_flag + i);
                     move_list.add(mv);
                 }
@@ -714,7 +717,7 @@ pub fn generate_legal_moves(board: &mut Board) -> MoveList {
     ml_final
 }
 
-fn perft(depth: u32, board: &mut Board) -> u32 {
+fn perft(depth: u32, board: &mut Board) -> u64 {
     if depth == 0 {
         return 1;
     }
@@ -856,6 +859,7 @@ fn perft_startpos() {
     assert_eq!(perft(5, &mut b), 4865609);
     assert_eq!(perft(6, &mut b), 119060324);
     // assert_eq!(perft(7, &mut b), 3195901860);
+    // assert_eq!(perft(8, &mut b), 84998978956);
 }
 
 #[test]

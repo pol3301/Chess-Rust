@@ -598,13 +598,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "chess"
+name = "chess_engine"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.13.1",
- "eframe",
- "egui",
- "egui_extras",
 ]
 
 [[package]]
@@ -1397,6 +1394,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdf242682df893b86f33a73828fb09ca4b2d3bb6cc95249707fc684d27484b91"
 dependencies = [
  "bitflags 2.13.1",
+]
+
+[[package]]
+name = "gui"
+version = "0.1.0"
+dependencies = [
+ "chess_engine",
+ "eframe",
+ "egui",
+ "egui_extras",
 ]
 
 [[package]]

@@ -1,14 +1,22 @@
-use crate::{
-    bitboard::BitboardExt,
-    board::Board,
-    fen::{START_POS, load_fen},
-    move_generator::generate_legal_moves,
-    moves::{Move, MoveList},
-    piece::{Piece, PieceColor, PieceType, get_color, get_type},
+use chess_engine::bitboard::BitboardExt;
+use chess_engine::{
+    Board, Move, MoveList, Piece, PieceColor, PieceType, fen, generate_legal_moves, get_color,
+    get_type, load_fen,
 };
 
 const BOARD_HEIGHT: f32 = 800.0;
 const BOARD_WIDTH: f32 = 800.0;
+
+struct Game {
+    board: Board,
+    legal_moves: MoveList,
+    selected_piece: SelectionState,
+}
+
+enum AppState {
+    Playing(Game),
+    Menu,
+}
 
 #[derive(Default, Clone, Copy, Debug)]
 enum SelectionState {
@@ -31,7 +39,7 @@ impl ChessApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
-        let mut board = load_fen(START_POS).unwrap_or_default();
+        let mut board = load_fen(fen::START_POS).unwrap_or_default();
         let legal_move_list = generate_legal_moves(&mut board);
 
         Self {
@@ -214,9 +222,11 @@ impl eframe::App for ChessApp {
                 match self.state {
                     SelectionState::Selected(from_idx) => {
                         if from_idx != to_idx {
-                            let tmp_move = Move::new(from_idx, to_idx, Move::FLAG_CAPTURE);
-                            self.board.do_move(tmp_move);
-                            self.legal_move_list = generate_legal_moves(&mut self.board);
+                            let tmp_move = Move::new(from_idx, to_idx, Move::FLAG_QUIET);
+                            if let Some(m) = self.legal_move_list.contains(tmp_move) {
+                                self.board.do_move(m);
+                                self.legal_move_list = generate_legal_moves(&mut self.board);
+                            }
                         }
                         self.state = SelectionState::None;
                     }
