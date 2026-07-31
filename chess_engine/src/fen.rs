@@ -1,6 +1,6 @@
 use crate::{
     board::{Board, CastlingRights},
-    piece::{PieceColor, PieceType, make_piece},
+    piece::{Piece, PieceColor, PieceTrait, PieceType},
 };
 
 pub const START_POS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -54,7 +54,7 @@ pub fn load_fen(fen: &str) -> Result<Board, FenError> {
 fn handle_half_move_clock(board: &mut Board, fen_part: &str) -> Result<(), FenError> {
     board.set_half_move_counter(
         fen_part
-            .parse::<u16>()
+            .parse::<u8>()
             .map_err(|_| FenError::InvalidHalfMoveClock)?,
     );
 
@@ -147,19 +147,19 @@ fn handle_piece_placement(board: &mut Board, fen_part: &str) -> Result<(), FenEr
         let index = col + row * 8;
 
         match c {
-            'p' => board.put_piece(make_piece(PieceType::Pawn, PieceColor::Black), index),
-            'n' => board.put_piece(make_piece(PieceType::Knight, PieceColor::Black), index),
-            'b' => board.put_piece(make_piece(PieceType::Bishop, PieceColor::Black), index),
-            'r' => board.put_piece(make_piece(PieceType::Rook, PieceColor::Black), index),
-            'q' => board.put_piece(make_piece(PieceType::Queen, PieceColor::Black), index),
-            'k' => board.put_piece(make_piece(PieceType::King, PieceColor::Black), index),
+            'p' => board.put_piece(Piece::make(PieceType::Pawn, PieceColor::Black), index),
+            'n' => board.put_piece(Piece::make(PieceType::Knight, PieceColor::Black), index),
+            'b' => board.put_piece(Piece::make(PieceType::Bishop, PieceColor::Black), index),
+            'r' => board.put_piece(Piece::make(PieceType::Rook, PieceColor::Black), index),
+            'q' => board.put_piece(Piece::make(PieceType::Queen, PieceColor::Black), index),
+            'k' => board.put_piece(Piece::make(PieceType::King, PieceColor::Black), index),
 
-            'P' => board.put_piece(make_piece(PieceType::Pawn, PieceColor::White), index),
-            'N' => board.put_piece(make_piece(PieceType::Knight, PieceColor::White), index),
-            'B' => board.put_piece(make_piece(PieceType::Bishop, PieceColor::White), index),
-            'R' => board.put_piece(make_piece(PieceType::Rook, PieceColor::White), index),
-            'Q' => board.put_piece(make_piece(PieceType::Queen, PieceColor::White), index),
-            'K' => board.put_piece(make_piece(PieceType::King, PieceColor::White), index),
+            'P' => board.put_piece(Piece::make(PieceType::Pawn, PieceColor::White), index),
+            'N' => board.put_piece(Piece::make(PieceType::Knight, PieceColor::White), index),
+            'B' => board.put_piece(Piece::make(PieceType::Bishop, PieceColor::White), index),
+            'R' => board.put_piece(Piece::make(PieceType::Rook, PieceColor::White), index),
+            'Q' => board.put_piece(Piece::make(PieceType::Queen, PieceColor::White), index),
+            'K' => board.put_piece(Piece::make(PieceType::King, PieceColor::White), index),
 
             '/' => {
                 if row == 0 {

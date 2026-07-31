@@ -169,11 +169,11 @@ pub struct UndoMove {
     pub taken_piece: Piece,
     pub castling_rights: CastlingRights,
     pub en_passant_bb: Bitboard,
-    pub half_move_counter: u16,
+    pub half_move_counter: u8,
     pub full_move_counter: u16,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UndoList {
     list: [UndoMove; 256],
     size: usize,

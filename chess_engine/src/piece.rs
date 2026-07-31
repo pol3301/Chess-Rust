@@ -18,42 +18,53 @@ pub enum PieceType {
     NoPiece = 7,
 }
 
-#[inline(always)]
-pub fn get_color(piece: Piece) -> PieceColor {
-    match piece & 0b1000 {
-        0b0000 => PieceColor::White,
-        0b1000 => PieceColor::Black,
-        _ => unreachable!(),
-    }
-}
-
-#[inline(always)]
-pub fn get_type(piece: Piece) -> PieceType {
-    match piece & 0b111 {
-        0 => PieceType::Pawn,
-        1 => PieceType::Knight,
-        2 => PieceType::Bishop,
-        3 => PieceType::Rook,
-        4 => PieceType::Queen,
-        5 => PieceType::King,
-        6 => PieceType::AllPieces,
-        7 => PieceType::NoPiece,
-        _ => unreachable!(),
-    }
-}
-
-#[inline(always)]
-pub fn make_piece(piece_type: PieceType, piece_color: PieceColor) -> u8 {
-    ((piece_color as u8) << 3) + (piece_type as u8)
-}
-
 impl PieceColor {
-    #[inline]
-    pub fn invert(self) -> Self {
+    #[inline(always)]
+    pub fn flip(self) -> Self {
         if self == PieceColor::White {
             PieceColor::Black
         } else {
             PieceColor::White
         }
     }
+}
+
+pub trait PieceTrait {
+    fn get_type(self) -> PieceType;
+    fn get_color(self) -> PieceColor;
+    fn make(piece_type: PieceType, piece_color: PieceColor) -> Self;
+    const NO_PIECE: Piece;
+}
+
+impl PieceTrait for Piece {
+    #[inline(always)]
+    fn get_type(self) -> PieceType {
+        match self & 0b111 {
+            0 => PieceType::Pawn,
+            1 => PieceType::Knight,
+            2 => PieceType::Bishop,
+            3 => PieceType::Rook,
+            4 => PieceType::Queen,
+            5 => PieceType::King,
+            6 => PieceType::AllPieces,
+            7 => PieceType::NoPiece,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline(always)]
+    fn get_color(self) -> PieceColor {
+        match self & 0b1000 {
+            0b0000 => PieceColor::White,
+            0b1000 => PieceColor::Black,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline(always)]
+    fn make(piece_type: PieceType, piece_color: PieceColor) -> Self {
+        ((piece_color as u8) << 3) + (piece_type as u8)
+    }
+
+    const NO_PIECE: Piece = 7;
 }

@@ -1,6 +1,7 @@
+use crate::PieceTrait;
 use crate::bitboard::Bitboard;
 use crate::moves::{Move, UndoList, UndoMove};
-use crate::piece::{Piece, PieceColor, PieceType, get_color, get_type, make_piece};
+use crate::piece::{Piece, PieceColor, PieceType};
 use crate::squares::Squares;
 use bitflags::bitflags;
 
@@ -36,7 +37,7 @@ const CASTLING_RIGHTS_MASK: [CastlingRights; 64] = {
     array
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Board {
     piece_bitboards_color: [Bitboard; 2],
     piece_bitboards_type: [Bitboard; 6],
@@ -51,7 +52,7 @@ pub struct Board {
 
     undo_list: UndoList,
 
-    half_move_counter: u16,
+    half_move_counter: u8,
     full_move_counter: u16,
 }
 
@@ -67,7 +68,7 @@ impl Board {
             piece_bitboards_color: [0u64; 2],
             piece_bitboards_type: [0u64; 6],
 
-            mailbox: [make_piece(PieceType::NoPiece, PieceColor::White); 64],
+            mailbox: [Piece::NO_PIECE; 64],
 
             en_passant_bb: 0,
 
@@ -86,8 +87,8 @@ impl Board {
 
         self.mailbox[index as usize] = piece;
 
-        self.piece_bitboards_color[get_color(piece) as usize] |= new_piece_bitboard;
-        self.piece_bitboards_type[get_type(piece) as usize] |= new_piece_bitboard;
+        self.piece_bitboards_color[piece.get_color() as usize] |= new_piece_bitboard;
+        self.piece_bitboards_type[piece.get_type() as usize] |= new_piece_bitboard;
     }
 
     pub fn remove_piece(&mut self, index: u8) {
@@ -95,10 +96,10 @@ impl Board {
 
         let piece = self.piece_at(index);
 
-        self.piece_bitboards_color[get_color(piece) as usize] &= !removed_piece_bitboard;
-        self.piece_bitboards_type[get_type(piece) as usize] &= !removed_piece_bitboard;
+        self.piece_bitboards_color[piece.get_color() as usize] &= !removed_piece_bitboard;
+        self.piece_bitboards_type[piece.get_type() as usize] &= !removed_piece_bitboard;
 
-        self.mailbox[index as usize] = make_piece(PieceType::NoPiece, PieceColor::White);
+        self.mailbox[index as usize] = Piece::NO_PIECE;
     }
 
     #[inline(always)]
@@ -156,7 +157,7 @@ impl Board {
         self.get_bb_by_color(PieceColor::White) | self.get_bb_by_color(PieceColor::Black)
     }
 
-    pub fn set_half_move_counter(&mut self, new_count: u16) {
+    pub fn set_half_move_counter(&mut self, new_count: u8) {
         self.half_move_counter = new_count;
     }
 
@@ -165,9 +166,9 @@ impl Board {
     }
 
     pub fn do_move(&mut self, move_to_make: Move) {
-        let mut captured_piece = make_piece(PieceType::NoPiece, PieceColor::White);
+        let mut captured_piece = Piece::NO_PIECE;
         let moving_piece = self.piece_at(move_to_make.from_square());
-        let moving_color = get_color(moving_piece);
+        let moving_color = moving_piece.get_color();
 
         let mut undo_move = UndoMove {
             mv: move_to_make,
@@ -185,7 +186,7 @@ impl Board {
         }
 
         let piece = if move_to_make.is_promotion() {
-            make_piece(move_to_make.promotion_type(), moving_color)
+            Piece::make(move_to_make.promotion_type(), moving_color)
         } else {
             moving_piece
         };
@@ -231,7 +232,7 @@ impl Board {
             self.remove_piece(move_to_make.to_square());
         }
 
-        self.turn = self.turn.invert();
+        self.turn = self.turn.flip();
         self.remove_piece(move_to_make.from_square());
 
         self.put_piece(piece, move_to_make.to_square());
@@ -249,14 +250,14 @@ impl Board {
         self.half_move_counter = undo_move.half_move_counter;
         self.full_move_counter = undo_move.full_move_counter;
 
-        let moving_color = get_color(self.piece_at(undo_move.mv.to_square()));
+        let moving_color = self.piece_at(undo_move.mv.to_square()).get_color();
 
         self.move_piece(undo_move.mv.to_square(), undo_move.mv.from_square());
 
         if undo_move.mv.is_promotion() {
             self.remove_piece(undo_move.mv.from_square());
             self.put_piece(
-                make_piece(PieceType::Pawn, moving_color),
+                Piece::make(PieceType::Pawn, moving_color),
                 undo_move.mv.from_square(),
             );
         }
@@ -264,19 +265,19 @@ impl Board {
         self.set_en_passant(undo_move.en_passant_bb);
         self.castling_rights = undo_move.castling_rights;
 
-        if undo_move.taken_piece != make_piece(PieceType::NoPiece, PieceColor::White) {
+        if undo_move.taken_piece != Piece::NO_PIECE {
             self.put_piece(undo_move.taken_piece, undo_move.mv.to_square());
         }
 
         if undo_move.mv.is_en_passant() {
             if moving_color == PieceColor::White {
                 self.put_piece(
-                    make_piece(PieceType::Pawn, PieceColor::Black),
+                    Piece::make(PieceType::Pawn, PieceColor::Black),
                     undo_move.mv.to_square() - 8,
                 );
             } else {
                 self.put_piece(
-                    make_piece(PieceType::Pawn, PieceColor::White),
+                    Piece::make(PieceType::Pawn, PieceColor::White),
                     undo_move.mv.to_square() + 8,
                 );
             }
@@ -298,7 +299,7 @@ impl Board {
             }
         }
 
-        self.set_turn(self.get_turn().invert());
+        self.set_turn(self.get_turn().flip());
     }
 
     #[inline(always)]

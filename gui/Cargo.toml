@@ -10,3 +10,13 @@ chess_engine = {path = "../chess_engine"}
 eframe = "0.35.0"
 egui = "0.35.0"
 egui_extras = {version = "0.35.0", features = ["image"]}
+
+[package.metadata.bundle]
+name = "Chess"
+identifier = "com.novel.paul"
+version = "1.0.0"
+category = "Game"
+short_description = "A chess game"
+long_description = """
+A very very good chess game
+"""

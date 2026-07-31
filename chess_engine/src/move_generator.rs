@@ -64,44 +64,6 @@ const ROOK_MAGICS: [u64; 64] = [ 4935945329314512900, 1170936040690548800, 29543
 #[rustfmt::skip]
 const BISHOP_MAGICS: [u64; 64] = [45071610159833120, 577604253527377920, 1158552112276310211, 1200668846067712, 298385603536486432, 1172347685743657508, 4611905930702880768, 72200535113155584, 667113304195597312, 18049875543343168, 2738224861687087109, 69845394250530848, 4415764856841, 577591256549965824, 288241923240501248, 10142447225085987, 1135529827763233, 18718154740007968, 7516648808768602176, 4910049502365876228, 1230609173723545744, 14160584999853688832, 6830312295236608, 562960163805224, 37172291328587904, 9225799759133149824, 9847419669605255200, 9302189986860367876, 73466070581657600, 2598578084546379920, 2308097439712741384, 594758824816182272, 1335345052452921890, 1585633274373120, 10699493712599044, 4616262187974393984, 38282813035819024, 141841295609860, 15277063195720713216, 10982595632048906753, 1450445021827318272, 1200735553389698, 4629719143128498432, 36171742189715968, 144185625842553088, 83606933039227136, 4649975416788877380, 9243647105388515456, 2306150907400159232, 291409254940672, 108931918737702976, 324613244035792960, 324259448132796483, 360340755606340096, 2319358274934521856, 2260600403009536, 74769005355008, 19796596101122, 81681623888170000, 37225074277242890, 596766812488606212, 90641543988512, 1243582972852568580, 18015807294423104];
 
-const fn generate_sliding_attacks(index: u8, blocker: Bitboard, piece_type: PieceType) -> Bitboard {
-    let start_x = (index % 8) as i32;
-    let start_y = (index / 8) as i32;
-
-    let mut attacks: Bitboard = 0;
-
-    let (dx_arr, dy_arr) = match piece_type {
-        PieceType::Rook => ([0, 0, -1, 1], [-1, 1, 0, 0]),
-        PieceType::Bishop => ([1, -1, 1, -1], [1, -1, -1, 1]),
-        _ => unreachable!(),
-    };
-
-    let mut dir_idx = 0;
-    while dir_idx < dx_arr.len() {
-        let dx = dx_arr[dir_idx];
-        let dy = dy_arr[dir_idx];
-
-        let mut x = start_x + dx;
-        let mut y = start_y + dy;
-
-        while x >= 0 && x < 8 && y >= 0 && y < 8 {
-            let curr_idx = (x + (y * 8)) as u8;
-            attacks |= 1u64 << curr_idx;
-
-            if (1u64 << curr_idx) & blocker != 0 {
-                break;
-            }
-
-            x += dx;
-            y += dy;
-        }
-
-        dir_idx += 1;
-    }
-
-    attacks
-}
-
 const fn calc_shift(index: u8, piece_type: PieceType) -> i32 {
     (64 - get_blocker_mask(index, piece_type).count_ones()) as i32
 }
@@ -184,100 +146,8 @@ const fn get_blocker_mask(index: u8, piece_type: PieceType) -> Bitboard {
     mask
 }
 
-const fn generate_permutations(mask: Bitboard) -> ([Bitboard; 4096], usize) {
-    let (bits_array, bits_array_size) = {
-        let mut c = 0;
-        let mut array = [0; 12];
-
-        let mut m = mask;
-        while m != 0 {
-            array[c] = m.trailing_zeros();
-            c += 1;
-
-            m &= m - 1;
-        }
-
-        (array, c)
-    };
-
-    let mut permutations: [Bitboard; 4096] = [0; 4096];
-    let mut count = 0;
-
-    while count < (1 << bits_array_size) {
-        let mut c = 0;
-        let mut bb: Bitboard = 0;
-        while c < bits_array_size {
-            let bit = ((count >> c) & 1) as u64;
-            bb |= bit << bits_array[c];
-
-            c += 1;
-        }
-
-        permutations[count] = bb;
-        count += 1;
-    }
-
-    (permutations, count)
-}
-
-const fn generate_all_blockers(index: u8, piece_type: PieceType) -> ([Bitboard; 4096], usize) {
-    let mask = get_blocker_mask(index, piece_type);
-    generate_permutations(mask)
-}
-
 include!(concat!(env!("OUT_DIR"), "/rooks_attack_table.rs"));
-
-// static ROOK_ATTACKS: [Bitboard; 102400] = {
-//     let mut array = [0; 102400];
-//
-//     let mut i = 0;
-//     while i < 64 {
-//         let (blockers, blockers_size) = generate_all_blockers(i, PieceType::Rook);
-//
-//         let mut j = 0;
-//
-//         while j < blockers_size {
-//             let magic_info = &ROOK_MAGIC_INFO[i as usize];
-//             let array_index = ((blockers[j].wrapping_mul(magic_info.magic) >> magic_info.shift)
-//                 + magic_info.offset) as usize;
-//
-//             array[array_index] = generate_sliding_attacks(i, blockers[j], PieceType::Rook);
-//
-//             j += 1;
-//         }
-//
-//         i += 1;
-//     }
-//
-//     array
-// };
-
 include!(concat!(env!("OUT_DIR"), "/bishops_attack_table.rs"));
-
-// static BISHOP_ATTACKS: [Bitboard; 5248] = {
-//     let mut array = [0; 5248];
-//
-//     let mut i = 0;
-//     while i < 64 {
-//         let (blockers, blockers_size) = generate_all_blockers(i, PieceType::Bishop);
-//
-//         let mut j = 0;
-//
-//         while j < blockers_size {
-//             let magic_info = &BISHOP_MAGIC_INFO[i as usize];
-//             let array_index = ((blockers[j].wrapping_mul(magic_info.magic) >> magic_info.shift)
-//                 + magic_info.offset) as usize;
-//
-//             array[array_index] = generate_sliding_attacks(i, blockers[j], PieceType::Bishop);
-//
-//             j += 1;
-//         }
-//
-//         i += 1;
-//     }
-//
-//     array
-// };
 
 static KNIGHT_ATTACKS: [Bitboard; 64] = {
     let mut array = [0; 64];
@@ -585,7 +455,7 @@ pub fn generate_moves<const CAPTURES: bool, const QUIETS: bool>(
 
     let friendlies = board.get_bb_by_color(turn);
 
-    let enemies = board.get_bb_by_color(turn.invert());
+    let enemies = board.get_bb_by_color(turn.flip());
 
     let all_pieces = board.get_all_pieces();
 
@@ -686,14 +556,14 @@ fn is_square_attacked(board: &Board, square: u8, attacker_color: PieceColor) -> 
     false
 }
 
-fn is_in_check(board: &Board, color: PieceColor) -> bool {
+pub fn is_in_check(board: &Board, color: PieceColor) -> bool {
     let mut king_bb = board.get_bb_by_type(PieceType::King) & board.get_bb_by_color(color);
     if king_bb == 0 {
         return true;
     }
     let king_sq = king_bb.pop_lsb();
 
-    let enemy_color = color.invert();
+    let enemy_color = color.flip();
 
     is_square_attacked(board, king_sq, enemy_color)
 }
@@ -754,20 +624,6 @@ fn perft(depth: u32, board: &mut Board) -> u64 {
 }
 
 #[test]
-fn rook_blockers_test() {
-    let (blockers, size) = generate_all_blockers(0, PieceType::Rook);
-    let mask = get_blocker_mask(0, PieceType::Rook);
-
-    for blocker in blockers {
-        assert_eq!(mask & blocker, blocker);
-    }
-
-    assert_ne!(blockers[4], blockers[893]);
-
-    assert_eq!(size, 4096);
-}
-
-#[test]
 fn blocker_mask_test() {
     let bb = get_blocker_mask(0, PieceType::Rook);
     let mut count = 0;
@@ -782,70 +638,6 @@ fn blocker_mask_test() {
     assert_eq!(bb, 0x000101010101017E);
     assert_eq!(1 << count, 4096);
     assert_eq!(count, 12);
-}
-
-#[test]
-fn magics_rook() {
-    let mut array = [0; 102400];
-
-    let mut i = 0;
-    while i < 64 {
-        let (blockers, blockers_size) = generate_all_blockers(i, PieceType::Rook);
-
-        let mut j = 0;
-
-        while j < blockers_size {
-            let magic_info = &ROOK_MAGIC_INFO[i as usize];
-            let array_index = ((blockers[j].wrapping_mul(magic_info.magic) >> magic_info.shift)
-                + magic_info.offset) as usize;
-
-            let curr_moves = generate_sliding_attacks(i, blockers[j], PieceType::Rook);
-            if array[array_index] != 0 {
-                assert_eq!(
-                    array[array_index], curr_moves,
-                    "Desctructive Collision on square {}",
-                    i
-                );
-            }
-            array[array_index] = curr_moves;
-
-            j += 1;
-        }
-
-        i += 1;
-    }
-}
-
-#[test]
-fn magics_bishop() {
-    let mut array = [0; 5248];
-
-    let mut i = 0;
-    while i < 64 {
-        let (blockers, blockers_size) = generate_all_blockers(i, PieceType::Bishop);
-
-        let mut j = 0;
-
-        while j < blockers_size {
-            let magic_info = &BISHOP_MAGIC_INFO[i as usize];
-            let array_index = ((blockers[j].wrapping_mul(magic_info.magic) >> magic_info.shift)
-                + magic_info.offset) as usize;
-
-            let curr_moves = generate_sliding_attacks(i, blockers[j], PieceType::Bishop);
-            if array[array_index] != 0 {
-                assert_eq!(
-                    array[array_index], curr_moves,
-                    "Desctructive Collision on square {}",
-                    i
-                );
-            }
-            array[array_index] = curr_moves;
-
-            j += 1;
-        }
-
-        i += 1;
-    }
 }
 
 #[test]

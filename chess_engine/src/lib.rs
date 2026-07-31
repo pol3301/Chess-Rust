@@ -10,4 +10,4 @@ pub use board::Board;
 pub use fen::load_fen;
 pub use move_generator::generate_legal_moves;
 pub use moves::{Move, MoveList};
-pub use piece::{Piece, PieceColor, PieceType, get_color, get_type};
+pub use piece::{Piece, PieceColor, PieceTrait, PieceType};
