@@ -1,4 +1,6 @@
 mod app;
+mod board_ui;
+mod config;
 mod game;
 
 use crate::app::ChessApp;
