@@ -186,7 +186,7 @@ impl Board {
         }
 
         let piece = if move_to_make.is_promotion() {
-            Piece::make(move_to_make.promotion_type(), moving_color)
+            Piece::make(move_to_make.promotion_type().unwrap(), moving_color)
         } else {
             moving_piece
         };

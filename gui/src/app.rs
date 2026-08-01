@@ -1,8 +1,9 @@
-use chess_engine::{
-    Board, Move, MoveList, Piece, PieceColor, PieceTrait, PieceType, bitboard::BitboardExt, fen,
-    generate_legal_moves,
+use crate::game::{Game, GameMoment, SelectionState};
+use chess_engine::{Piece, PieceColor, PieceTrait, PieceType, bitboard::BitboardExt};
+use egui::{
+    Button, Color32, Id, Image, Key, KeyboardShortcut, Modifiers, Painter, Pos2, Rect, Sense,
+    Stroke, Vec2, include_image,
 };
-use egui::{Color32, Id, Image, Painter, Pos2, Rect, Sense, Stroke, Vec2, include_image};
 
 #[derive(Clone, Copy)]
 struct ColorSet(Color32, Color32); //(Light, Dark)
@@ -29,14 +30,6 @@ enum PieceSet {
     MaxArt,
     ChessDotCom,
     Lichess,
-}
-
-#[derive(PartialEq, Eq)]
-enum GameMoment {
-    Playing,
-    Winner(PieceColor),
-    Draw,
-    Promoting(u8),
 }
 
 struct AppConfig {
@@ -117,7 +110,7 @@ impl BoardUI {
     }
 
     fn draw_piece(ui: &egui::Ui, pos: Pos2, piece: Piece, set: PieceSet, size: f32) {
-        let rect_size = egui::Vec2::new(size, size);
+        let rect_size = Vec2::new(size, size);
 
         let rect = Rect::from_min_size(pos, rect_size);
         Self::get_piece_image(piece, set).paint_at(ui, rect);
@@ -126,7 +119,7 @@ impl BoardUI {
     fn draw_legal_moves(painter: &Painter, index: u8, game: &Game, origin: Pos2, square_size: f32) {
         let legal_moves_color = Color32::from_rgba_unmultiplied(0x30, 0x30, 0x30, 128);
 
-        for m in game.legal_moves.as_slice() {
+        for m in game.legal_moves().as_slice() {
             if m.from_square() == index {
                 let center_raw = Self::coords_from_index(m.to_square(), game.perspective);
                 let center = origin
@@ -140,15 +133,15 @@ impl BoardUI {
         }
     }
 
-    fn promotion_box(
-        ui: &egui::Ui,
+    fn promotion_query(
+        ui: &mut egui::Ui,
         index: u8,
         game: &Game,
         config: &AppConfig,
         origin: Pos2,
         square_size: f32,
-    ) {
-        let turn = game.board.get_turn();
+    ) -> Option<PieceType> {
+        let turn = game.board().get_turn();
         let promotions = [
             PieceType::Queen,
             PieceType::Rook,
@@ -158,17 +151,32 @@ impl BoardUI {
         .map(|pt| Piece::make(pt, turn));
 
         for (i, piece) in promotions.iter().enumerate() {
-            if turn == PieceColor::White {
-                let coords_raw = Self::coords_from_index(index - (8 * i) as u8, game.perspective);
-                let coords = origin
-                    + Vec2::new(
-                        coords_raw.0 as f32 * square_size,
-                        coords_raw.1 as f32 * square_size,
-                    );
+            let coords_raw = if turn == PieceColor::White {
+                Self::coords_from_index(index - (8 * i) as u8, game.perspective)
+            } else {
+                Self::coords_from_index(index + (8 * i) as u8, game.perspective)
+            };
 
-                Self::draw_piece(ui, coords, *piece, config.piece_set, square_size);
+            let coords = origin
+                + Vec2::new(
+                    coords_raw.0 as f32 * square_size,
+                    coords_raw.1 as f32 * square_size,
+                );
+
+            let img = Self::get_piece_image(*piece, config.piece_set);
+            let rect = Rect::from_min_size(coords, Vec2::new(square_size, square_size));
+            if ui
+                .put(
+                    rect,
+                    Button::new(img).fill(Color32::from_rgb(0xFF, 0xFF, 0xFF)),
+                )
+                .clicked()
+            {
+                return Some(piece.get_type());
             }
         }
+
+        None
     }
 
     pub fn ui(ui: &mut egui::Ui, game: &mut Game, config: &AppConfig) {
@@ -191,11 +199,12 @@ impl BoardUI {
             game.perspective,
         );
 
-        let mut pieces = game.board.get_all_pieces();
+        let mut pieces = game.board().get_all_pieces();
 
-        let dragging_index = match game.selected_piece {
-            SelectionState::Dragging(index) => Some(index),
-            _ => None,
+        let dragging_index = if let SelectionState::Dragging(index) = game.selected_piece() {
+            Some(index)
+        } else {
+            None
         };
 
         while pieces != 0 {
@@ -209,7 +218,7 @@ impl BoardUI {
             let (x, y) = (x_raw as f32 * square_size, y_raw as f32 * square_size);
             let pos = board_origin + Vec2::new(x, y);
 
-            let piece = game.board.piece_at(index);
+            let piece = game.board().piece_at(index);
 
             Self::draw_piece(ui, pos, piece, config.piece_set, square_size);
         }
@@ -227,21 +236,21 @@ impl BoardUI {
                 game.perspective,
             );
 
-            if game.moment == GameMoment::Playing {
+            if game.moment() == GameMoment::Playing {
                 if response.drag_started() {
                     game.handle_drag_start(mouse_index);
                 } else if response.drag_stopped() {
                     game.handle_drag_end(mouse_index);
                 }
 
-                if let SelectionState::Dragging(index) = game.selected_piece {
+                if let SelectionState::Dragging(index) = game.selected_piece() {
                     Self::draw_legal_moves(ui.painter(), index, game, board_origin, square_size);
 
                     if ui.rect_contains_pointer(board_rect) {
                         Self::draw_piece(
                             ui,
                             mouse_pos - Vec2::new(square_size / 2.0, square_size / 2.0),
-                            game.board.piece_at(index),
+                            game.board().piece_at(index),
                             config.piece_set,
                             square_size,
                         );
@@ -254,81 +263,24 @@ impl BoardUI {
             }
         }
 
-        if let GameMoment::Promoting(index) = game.moment {
-            Self::promotion_box(ui, index, game, config, board_origin, square_size);
+        if let GameMoment::Promoting(from, to) = game.moment()
+            && let Some(piece) =
+                Self::promotion_query(ui, to, game, config, board_origin, square_size)
+        {
+            game.try_move(from, to, Some(piece));
         }
 
-        if let SelectionState::Selected(index) = game.selected_piece {
+        if let SelectionState::Selected(index) = game.selected_piece() {
             Self::draw_legal_moves(ui.painter(), index, game, board_origin, square_size);
         }
 
-        if ui.input(|i| i.key_pressed(egui::Key::F)) {
+        if ui.input(|i| i.key_pressed(Key::F)) {
             game.perspective = game.perspective.flip();
         }
-    }
-}
 
-struct Game {
-    board: Board,
-    legal_moves: MoveList,
-    selected_piece: SelectionState,
-    perspective: PieceColor,
-    moment: GameMoment,
-}
-
-impl Game {
-    pub fn new() -> Self {
-        let mut board = fen::load_fen(fen::START_POS).unwrap();
-        let legal_moves = generate_legal_moves(&mut board);
-
-        Self {
-            board,
-            legal_moves,
-            selected_piece: SelectionState::None,
-            perspective: PieceColor::White,
-            moment: GameMoment::Playing,
-        }
-    }
-
-    pub fn try_move(&mut self, from: u8, to: u8, flag: Option<u16>) {
-        let tmp_move = Move::new(from, to, 0);
-        if let Some(legal_move) = self.legal_moves.contains(tmp_move) {
-            if legal_move.is_promotion() {
-                self.moment = GameMoment::Promoting(legal_move.to_square());
-                return;
-            }
-
-            self.board.do_move(legal_move);
-
-            self.legal_moves = generate_legal_moves(&mut self.board);
-            if self.legal_moves.size() == 0 {
-                self.moment = GameMoment::Winner(self.board.get_turn().flip());
-            }
-        }
-    }
-
-    pub fn handle_drag_start(&mut self, index: u8) {
-        if self.board.piece_at(index) != Piece::NO_PIECE {
-            self.selected_piece = SelectionState::Dragging(index);
-        }
-    }
-
-    pub fn handle_drag_end(&mut self, index: u8) {
-        if let SelectionState::Dragging(from) = self.selected_piece {
-            self.try_move(from, index, None);
-        }
-
-        self.selected_piece = SelectionState::None;
-    }
-
-    pub fn handle_click(&mut self, index: u8) {
-        match self.selected_piece {
-            SelectionState::None => self.selected_piece = SelectionState::Selected(index),
-            SelectionState::Selected(from) => {
-                self.try_move(from, index, None);
-                self.selected_piece = SelectionState::None;
-            }
-            SelectionState::Dragging(_) => {}
+        if ui.input_mut(|i| i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, Key::Z)))
+        {
+            game.undo();
         }
     }
 }
@@ -336,14 +288,6 @@ impl Game {
 enum AppState {
     Playing(Box<Game>),
     MainMenu,
-}
-
-#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
-enum SelectionState {
-    #[default]
-    None,
-    Selected(u8),
-    Dragging(u8),
 }
 
 pub struct ChessApp {

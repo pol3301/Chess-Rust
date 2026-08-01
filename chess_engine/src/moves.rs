@@ -95,13 +95,13 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn promotion_type(self) -> PieceType {
+    pub fn promotion_type(self) -> Option<PieceType> {
         match self.flags() & !Move::FLAG_CAPTURE {
-            Move::FLAG_PROMOTE_KNIGHT => PieceType::Knight,
-            Move::FLAG_PROMOTE_BISHOP => PieceType::Bishop,
-            Move::FLAG_PROMOTE_ROOK => PieceType::Rook,
-            Move::FLAG_PROMOTE_QUEEN => PieceType::Queen,
-            _ => unreachable!(),
+            Move::FLAG_PROMOTE_KNIGHT => Some(PieceType::Knight),
+            Move::FLAG_PROMOTE_BISHOP => Some(PieceType::Bishop),
+            Move::FLAG_PROMOTE_ROOK => Some(PieceType::Rook),
+            Move::FLAG_PROMOTE_QUEEN => Some(PieceType::Queen),
+            _ => None,
         }
     }
 }
