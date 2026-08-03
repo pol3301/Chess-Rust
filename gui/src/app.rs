@@ -4,7 +4,8 @@ use crate::config::AppConfig;
 use crate::game::Game;
 use crate::{board_ui::BoardUI, game::OnlineGame};
 use chess_engine::{Move, PieceColor, fen};
-use egui::{Color32, Frame, RichText};
+use egui::FontSelection::FontId;
+use egui::{Color32, Frame, Margin, RichText, TextStyle};
 use networking::{Connection, Message, bind_socket};
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -160,20 +161,36 @@ impl eframe::App for ChessApp {
 
                         ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                             ui.add_space(ui.available_height() / 2.5);
-                            ui.text_edit_singleline(buffer);
+                            let response = ui.add(
+                                egui::TextEdit::singleline(buffer)
+                                    .hint_text(
+                                        RichText::new("Peer Ip")
+                                            .font(egui::FontId::proportional(22.0)),
+                                    )
+                                    .desired_width(250.0)
+                                    .background_color(Color32::from_rgb(0x2A, 0x2A, 0x2A))
+                                    .font(egui::FontId::proportional(22.0))
+                                    .margin(Margin::symmetric(16, 16)),
+                            );
+
+                            ui.add_space(30.0);
 
                             let connect = egui::Button::new(
                                 RichText::new("Connect").size(24.0).color(Color32::WHITE),
                             );
 
-                            if ui.add_sized([200.0, 60.0], connect).clicked() {
+                            if ui.add_sized([200.0, 60.0], connect).clicked()
+                                || (response.lost_focus()
+                                    && ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                            {
                                 if let Some(socket) = bind_socket() {
-                                    let (tx, rx) = Connection::create_connection(
-                                        socket,
-                                        buffer.parse().unwrap(),
-                                    );
+                                    if let Ok(addr) = buffer.parse() {
+                                        let (tx, rx) = Connection::create_connection(socket, addr);
 
-                                    new_state = Some(AppState::Connecting { tx, rx });
+                                        new_state = Some(AppState::Connecting { tx, rx });
+                                    } else {
+                                        eprintln!("Couldn't parse the socket");
+                                    }
                                 } else {
                                     eprintln!("Couldn't bind to any socket");
                                 }

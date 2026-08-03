@@ -237,7 +237,7 @@ impl BoardUI {
             && let Some(piece) =
                 Self::promotion_query(ui, to, game, config, board_origin, square_size)
         {
-            game.try_move(from, to, Some(piece));
+            let _ = game.try_move(from, to, Some(piece));
         }
 
         if let SelectionState::Selected(index) = game.selected_piece() {
