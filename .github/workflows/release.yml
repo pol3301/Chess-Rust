@@ -48,7 +48,7 @@ jobs:
       - name: Build Binary and Bundle
         run: |
           cargo build --release
-          cargo bundle --release
+          cargo bundle -p gui --release
 
       - name: Stage Artifacts for Compression
         shell: bash
