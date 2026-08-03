@@ -6,10 +6,3 @@ edition = "2024"
 [dependencies]
 
 bitflags = "2.13.1"
-
-[profile.release]
-opt-level = 3          # Maximum optimization for execution speed (default, but good to be explicit)
-lto = "fat"            # Link-Time Optimization: optimizes across all crates and dependencies
-codegen-units = 1      # Uses 1 thread for code generation to maximize optimization quality
-panic = "abort"        # Removes stack-unwinding code, reducing binary size and overhead
-strip = true           # Strips symbols and debug info to make the compiled binary smaller

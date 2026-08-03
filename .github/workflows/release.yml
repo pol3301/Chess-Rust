@@ -8,30 +8,25 @@ on:
 jobs:
   release:
     name: Build for ${{ matrix.os }}
+    # This matrix tells GitHub to run the job 3 times using the details below
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
-            binary_name: gui
-            bundle_dir: target/release/bundle/deb
+            artifact_name: gui
+            asset_name: chess-linux
             archive_name: chess-linux.tar.gz
-            # Tar preserves unix file permissions (chmod +x)
-            pack_cmd: tar -czf chess-linux.tar.gz -C dist .
-
           - os: macos-latest
-            binary_name: gui
-            bundle_dir: target/release/bundle/osx
+            artifact_name: gui
+            asset_name: chess-macos
             archive_name: chess-macos.zip
-            # Info-ZIP preserves unix permissions inside the archive
-            pack_cmd: cd dist && zip -r ../chess-macos.zip .
-
           - os: windows-latest
-            binary_name: gui.exe
-            bundle_dir: target/release/bundle/msi
+            artifact_name: gui.exe
+            asset_name: chess-windows.exe
             archive_name: chess-windows.zip
-            pack_cmd: powershell Compress-Archive -Path dist\* -DestinationPath chess-windows.zip
 
     runs-on: ${{ matrix.os }}
+
     permissions:
       contents: write
 
@@ -42,29 +37,32 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install cargo-bundle
-        run: cargo install cargo-bundle
+      - name: Build the project
+        run: cargo build -p gui --release
 
-      - name: Build Binary and Bundle
-        run: |
-          cargo build --release
-          cargo bundle -p gui --release
-
-      - name: Stage Artifacts for Compression
+      - name: Rename and Package Binary
+        # We force bash so the script works uniformly across Linux, macOS, and Windows
         shell: bash
         run: |
-          mkdir -p dist
-          # Copy the raw compiled binary
-          cp target/release/${{ matrix.binary_name }} dist/
-          # Copy the bundle output (.deb, .app directory, or .msi)
-          cp -r ${{ matrix.bundle_dir }}/* dist/
-
-      - name: Create Combined Archive
-        run: ${{ matrix.pack_cmd }}
+          # Move into the release directory so the archive doesn't include the 'target/release' folder path
+          cd target/release
+          
+          # Rename the binary
+          mv ${{ matrix.artifact_name }} ${{ matrix.asset_name }}
+          
+          # Package as .tar.gz for Linux, or .zip for Windows/macOS
+          if [[ "${{ matrix.archive_name }}" == *.tar.gz ]]; then
+            tar -czvf ${{ matrix.archive_name }} ${{ matrix.asset_name }}
+          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            # Use 7z for Windows since 'zip' is not available in Git Bash
+            7z a ${{ matrix.archive_name }} ${{ matrix.asset_name }}
+          else
+            zip ${{ matrix.archive_name }} ${{ matrix.asset_name }}
+          fi
 
       - name: Create GitHub Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.archive_name }}
+          files: target/release/${{ matrix.archive_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
