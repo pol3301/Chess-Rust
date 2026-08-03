@@ -6,8 +6,10 @@ edition = "2024"
 [dependencies]
 
 chess_engine = {path = "../chess_engine"}
+networking = {path = "../networking"}
 
 eframe = "0.35.0"
+tokio = {version = "1.53.1", features = ["full"]}
 egui = "0.35.0"
 egui_extras = {version = "0.35.0", features = ["image"]}
 

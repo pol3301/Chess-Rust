@@ -23,6 +23,7 @@ impl ColorSet {
 #[derive(Clone, Copy)]
 pub enum PieceSet {
     MaxArt,
+    MaxArtV2,
     ChessDotCom,
     Lichess,
 }

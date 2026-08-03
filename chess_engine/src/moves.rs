@@ -49,6 +49,18 @@ impl Move {
     pub const FLAG_PROMOTE_ROOK_CAPTURE: u16 = 0b1110;
     pub const FLAG_PROMOTE_QUEEN_CAPTURE: u16 = 0b1111;
 
+    pub const NULL: Move = Move(0);
+
+    #[inline]
+    pub fn as_bytes(self) -> u16 {
+        self.0
+    }
+
+    #[inline]
+    pub fn from_bytes(m: u16) -> Move {
+        Move(m)
+    }
+
     #[inline(always)]
     pub fn new(from: u8, to: u8, flag: u16) -> Self {
         Self(flag << 12 | (from as u16) | ((to as u16) << 6))

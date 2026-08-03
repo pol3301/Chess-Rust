@@ -25,7 +25,7 @@ impl BoardUI {
         perspective: PieceColor,
     ) -> u8 {
         let x = ((x - board_origin.x) / square_size) as u8;
-        let y = ((y - board_origin.y) / square_size) as u8;
+        let y = (((y - board_origin.y) / square_size) as u8).min(7);
 
         match perspective {
             PieceColor::White => x + ((7 - y) * 8),
@@ -193,7 +193,7 @@ impl BoardUI {
             Self::draw_piece(ui, pos, piece, config.piece_set, square_size);
         }
 
-        let response = ui.interact(board_rect, Id::new(1), Sense::click_and_drag());
+        let response = ui.interact(board_rect, Id::new("chess board"), Sense::click_and_drag());
 
         if let Some(mouse_pos) = ui.pointer_hover_pos()
             && response.contains_pointer()
@@ -228,7 +228,7 @@ impl BoardUI {
                 };
 
                 if response.clicked() {
-                    game.handle_click(mouse_index);
+                    game.handle_select(mouse_index);
                 }
             }
         }

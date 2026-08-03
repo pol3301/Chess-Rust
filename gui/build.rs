@@ -6,7 +6,7 @@ fn main() {
 
     let piece_types = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
     let piece_colors = ["White", "Black"];
-    let piece_sets = ["Lichess", "ChessDotCom", "MaxArt"];
+    let piece_sets = ["Lichess", "ChessDotCom", "MaxArt", "MaxArtV2"];
 
     let mut code = String::new();
     code.push_str("match (piece.get_type(), piece.get_color(), image_set) {\n");
@@ -16,6 +16,7 @@ fn main() {
             "Lichess" => "res-lichess",
             "MaxArt" => "res-max",
             "ChessDotCom" => "res-chessdotcom",
+            "MaxArtV2" => "res-max-v2",
             _ => unreachable!(),
         };
 

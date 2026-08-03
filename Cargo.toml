@@ -3,6 +3,7 @@
 members = [
   "gui",
   "chess_engine",
+  "networking",
 ]
 
 resolver = "2"

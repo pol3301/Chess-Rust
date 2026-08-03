@@ -1,7 +1,8 @@
 use chess_engine::{
     Board, Move, MoveList, Piece, PieceColor, PieceTrait, PieceType, fen, generate_legal_moves,
-    piece,
 };
+use networking::Message;
+use tokio::sync::mpsc::Sender;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelectionState {
@@ -19,16 +20,23 @@ pub enum GameMoment {
     Promoting(u8, u8),
 }
 
+#[derive(Clone)]
+pub struct OnlineGame {
+    pub color_us: PieceColor,
+    pub tx: Sender<Message>,
+}
+
 pub struct Game {
     board: Board,
     legal_moves: MoveList,
     selected_piece: SelectionState,
     moment: GameMoment,
+    online: Option<OnlineGame>,
     pub perspective: PieceColor,
 }
 
 impl Game {
-    pub fn new() -> Self {
+    pub fn new(online: Option<OnlineGame>) -> Self {
         let mut board = fen::load_fen(fen::START_POS).unwrap();
         let legal_moves = generate_legal_moves(&mut board);
 
@@ -38,11 +46,16 @@ impl Game {
             selected_piece: SelectionState::None,
             perspective: PieceColor::White,
             moment: GameMoment::Playing,
+            online,
         }
     }
 
     pub fn board(&self) -> &Board {
         &self.board
+    }
+
+    pub fn online(&self) -> &Option<OnlineGame> {
+        &self.online
     }
 
     pub fn legal_moves(&self) -> &MoveList {
@@ -61,7 +74,12 @@ impl Game {
         self.board.undo_move();
     }
 
-    pub fn try_move(&mut self, from: u8, to: u8, promotion_choice: Option<PieceType>) {
+    pub fn try_move(
+        &mut self,
+        from: u8,
+        to: u8,
+        promotion_choice: Option<PieceType>,
+    ) -> Result<Move, &str> {
         let move_choices: Vec<Move> = self
             .legal_moves
             .as_slice()
@@ -71,13 +89,13 @@ impl Game {
             .collect();
 
         if move_choices.is_empty() {
-            return;
+            return Err("Found no matching legal move");
         }
 
         if move_choices.len() == 1 {
             self.board.do_move(move_choices[0]);
             self.legal_moves = generate_legal_moves(&mut self.board);
-            return;
+            return Ok(move_choices[0]);
         }
 
         if let Some(promotion_piece) = promotion_choice {
@@ -87,11 +105,16 @@ impl Game {
 
             if let Some(valid_move) = chosen_move {
                 self.board.do_move(valid_move);
+                self.legal_moves = generate_legal_moves(&mut self.board);
                 self.moment = GameMoment::Playing;
+                Ok(valid_move)
+            } else {
+                Err("Found no matching legal move")
             }
         } else {
             self.moment = GameMoment::Promoting(from, to);
             self.selected_piece = SelectionState::None;
+            Ok(Move::NULL)
         }
     }
 
@@ -103,17 +126,47 @@ impl Game {
 
     pub fn handle_drag_end(&mut self, index: u8) {
         if let SelectionState::Dragging(from) = self.selected_piece {
-            self.try_move(from, index, None);
+            if let Some(us) = self.online.as_ref().map(|o| &o.color_us)
+                && *us != self.board.piece_at(from).get_color()
+            {
+                self.selected_piece = SelectionState::None;
+                return;
+            }
+
+            match self.try_move(from, index, None) {
+                Ok(m) => {
+                    if let Some(tx) = self.online.as_ref().map(|o| &o.tx) {
+                        tx.try_send(Message::Move(m.as_bytes()))
+                            .expect("Failed to send move within the app");
+                    }
+                }
+                Err(e) => eprintln!("{}", e),
+            }
         }
 
         self.selected_piece = SelectionState::None;
     }
 
-    pub fn handle_click(&mut self, index: u8) {
+    pub fn handle_select(&mut self, index: u8) {
         match self.selected_piece {
             SelectionState::None => self.selected_piece = SelectionState::Selected(index),
             SelectionState::Selected(from) => {
-                self.try_move(from, index, None);
+                if let Some(us) = self.online.as_ref().map(|o| &o.color_us)
+                    && *us != self.board.piece_at(from).get_color()
+                {
+                    self.selected_piece = SelectionState::None;
+                    return;
+                }
+
+                match self.try_move(from, index, None) {
+                    Ok(m) => {
+                        if let Some(tx) = self.online.as_ref().map(|o| &o.tx) {
+                            tx.try_send(Message::Move(m.as_bytes()))
+                                .expect("Failed to send move within the app");
+                        }
+                    }
+                    Err(e) => eprintln!("{}", e),
+                }
                 self.selected_piece = SelectionState::None;
             }
             SelectionState::Dragging(_) => {}

@@ -352,28 +352,18 @@ pub fn generate_piece_moves<const CAPTURES: bool, const QUIETS: bool>(
     all_pieces: Bitboard,
     move_list: &mut MoveList,
 ) {
-    let target_squares = if CAPTURES && QUIETS {
-        (attacks & !all_pieces) | (attacks & enemies)
-    } else if CAPTURES {
-        attacks & enemies
-    } else if QUIETS {
-        attacks & !all_pieces
-    } else {
-        0
-    };
+    if CAPTURES {
+        let mut bb = attacks & enemies;
+        while bb != 0 {
+            move_list.add(Move::new(index, bb.pop_lsb(), Move::FLAG_CAPTURE));
+        }
+    }
 
-    let mut bb = target_squares;
-
-    while bb != 0 {
-        let to = bb.pop_lsb();
-
-        let flag = if CAPTURES && ((1 << to) & enemies) != 0 {
-            Move::FLAG_CAPTURE
-        } else {
-            Move::FLAG_QUIET
-        };
-
-        move_list.add(Move::new(index, to, flag));
+    if QUIETS {
+        let mut bb = attacks & !all_pieces;
+        while bb != 0 {
+            move_list.add(Move::new(index, bb.pop_lsb(), Move::FLAG_QUIET));
+        }
     }
 }
 
@@ -651,6 +641,14 @@ fn perft_startpos() {
     assert_eq!(perft(5, &mut b), 4865609);
     assert_eq!(perft(6, &mut b), 119060324);
     // assert_eq!(perft(7, &mut b), 3195901860);
+    // assert_eq!(perft(8, &mut b), 84998978956);
+}
+
+#[test]
+fn speed() {
+    let mut b = load_fen(START_POS).unwrap();
+    // assert_eq!(perft(6, &mut b), 119060324);
+    assert_eq!(perft(7, &mut b), 3195901860);
     // assert_eq!(perft(8, &mut b), 84998978956);
 }
 

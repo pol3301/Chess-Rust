@@ -5,7 +5,8 @@ mod game;
 
 use crate::app::ChessApp;
 
-fn main() -> eframe::Result {
+#[tokio::main]
+async fn main() -> eframe::Result {
     let viewport = egui::viewport::ViewportBuilder::default()
         .with_title("Chess")
         .with_inner_size([1100.0, 800.0])
