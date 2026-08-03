@@ -279,6 +279,13 @@ pub fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     println!("cargo:rerun-if-changed=build.rs");
 
-    gen_rooks_attack_table(out_dir.to_owned());
-    gen_bishops_attack_table(out_dir.to_owned());
+    let builder = std::thread::Builder::new().stack_size(8 * 1024 * 1024);
+    let handler = builder
+        .spawn(move || {
+            gen_rooks_attack_table(out_dir.to_owned());
+            gen_bishops_attack_table(out_dir.to_owned());
+        })
+        .unwrap();
+
+    handler.join().unwrap();
 }
